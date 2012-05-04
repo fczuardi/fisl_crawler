@@ -44,14 +44,17 @@ import urllib
 import urllib2
 import csv
 import htmlentitydefs
-import simplejson as json
+import json
 
 #CONSTANTS
-BASE_PROPOSAL_URL = 'http://verdi.softwarelivre.org/papers_ng/activity/view'
+BASE_PROPOSAL_URL = 'http://fisl.org.br/13/papers_ng/activity/view'
 OUTPUT_FORMATS = ['csv','json']
 
 #GLOBAL FLAGS
 verbose = None
+results_format = None
+output_file = None
+indent_level = None
 
 first_id = 1
 last_id = 5 #812
@@ -76,6 +79,12 @@ def main():
   results_format = 'csv'
   output_file = sys.stdout
   indent_level = None
+  global verbose
+  global first_id
+  global last_id
+  # global results_format
+  # global output_file
+  # global indent_level
   
   if(len(sys.argv) < 2):
     return usage()
@@ -119,7 +128,7 @@ def main():
 """Load the contents of a web page. Returns False if error or the content if success.
 """
 def get_page(page_id):
-  url = "%s?id=%s" % (BASE_PROPOSAL_URL,page_id)
+  url = "%s?activity_id=%s" % (BASE_PROPOSAL_URL,page_id)
   log("Acessing %s\t" % url)
   try:
     f = urllib2.urlopen(url)
@@ -141,21 +150,25 @@ def get_page(page_id):
 
 def extract_data(html,id):
   html = decode_htmlentities(html).encode('utf8')
-  entry_pattern = '<title>(.*?)</title>.*?<abstract>(.*?)</abstract>.*?<descr>(.*?)</descr>.*?<area id.*?<name>(.*?)</name>'
+  # entry_pattern = '<title>(.*?)</title>.*?<abstract>(.*?)</abstract>.*?<descr>(.*?)</descr>.*?<area id.*?<name>(.*?)</name>'
+  entry_pattern = '<title>(.*?)</title>.*?<abstract>(.*?)</abstract>.*?<descr>(.*?)</descr>.*?<authors>(.*?)</authors>'
   matches = re.search(entry_pattern, html, re.S|re.M)
   if matches:
+    authors = re.findall('<name>(.*?)</name>[^<]*<organization>', matches.group(4))
+    print(', '.join(authors))
     return {
       'title'     : matches.group(1)
+      ,'url'      : "%s?activity_id=%s" % (BASE_PROPOSAL_URL,id)
       ,'abstract' : matches.group(2)
       ,'proposal' : matches.group(3)
-      ,'track'    : matches.group(4)
-      ,'id'       : id
+      ,'authors'  : ', '.join(authors)
     }
   else :
+    log('No matches')
     return None
 
 def print_results(table, fmt, output_file, indent):
-  log(table)
+  # log(table)
   if fmt == 'csv':
     keys = table[0].keys()
     #write header
